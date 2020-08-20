@@ -1,7 +1,7 @@
 package chip8
 
 type Register struct {
-	// 8-bit general purpose register(from V0 to VF)
+	// 8-bit general purpose register (from V0 to VF)
 	V [16]byte
 	// Address register
 	I uint16
