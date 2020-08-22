@@ -25,7 +25,7 @@ var fontSet = [...]byte{
 	0xF0, 0x80, 0xF0, 0x80, 0x80, // F
 }
 
-func (memory *Memory) LoadRom(romPath string) error {
+func (memory *Memory) LoadROM(romPath string) error {
 	rom, err := ioutil.ReadFile(romPath)
 	if err != nil {
 		return err

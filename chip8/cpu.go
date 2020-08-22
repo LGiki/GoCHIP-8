@@ -5,25 +5,97 @@ import (
 	"math/rand"
 )
 
+const (
+	DisplayHeight = 32
+	DisplayWidth  = 64
+)
+
 type CPU struct {
 	Register Register
 	Memory   Memory
 	// internal stack to store return addresses when calling procedures
 	Stack [16]uint16
-	// 2D array representing 64 x 32 grid
-	Display [64][32]byte
+	// 2D array representing 32 x 64 grid
+	Display [DisplayHeight][DisplayWidth]byte
 	// State of the keys
 	KeyState [16]byte
+	// Need draw or not
+	NeedDraw bool
+	// Is wait for input (used by FX0A)
+	WaitInput bool
 }
 
-func (cpu *CPU) Cycle(opcode uint16) {
+func NewCPU() CPU {
+	cpu := CPU{}
+	cpu.Register.PC = 0x200
+	cpu.Memory = Memory{}
+	cpu.Memory.LoadFontSet()
+	return cpu
+}
+
+func (cpu *CPU) Reset() {
+	cpu.Register.PC = 0x200
+	cpu.Register.I = 0
+	cpu.Register.SP = 0
+	cpu.Register.DT = 0
+	cpu.Register.ST = 0
+	for i := 0; i < len(cpu.Register.V); i++ {
+		cpu.Register.V[i] = 0
+	}
+	for i := 0; i < len(cpu.Memory.Memory); i++ {
+		cpu.Memory.Memory[i] = 0
+	}
+	for i := 0; i < len(cpu.Stack); i++ {
+		cpu.Stack[i] = 0
+	}
+	cpu.Memory.LoadFontSet()
+	cpu.ClearDisplay()
+}
+
+func (cpu *CPU) ClearDisplay() {
+	for x := 0; x < DisplayHeight; x++ {
+		for y := 0; y < DisplayWidth; y++ {
+			cpu.Display[x][y] = 0
+		}
+	}
+}
+
+func (cpu *CPU) LoadROM(romPath string) error {
+	return cpu.Memory.LoadROM(romPath)
+}
+
+func (cpu *CPU) Run() {
+	cpu.Cycle()
+	if cpu.Register.DT > 0 {
+		cpu.Register.DT--
+	}
+	if cpu.Register.ST > 0 {
+		cpu.Register.ST--
+	}
+}
+
+func (cpu *CPU) getOpCode() uint16 {
+	return uint16(cpu.Memory.Memory[cpu.Register.PC])<<8 | uint16(cpu.Memory.Memory[cpu.Register.PC+1])
+}
+
+func (cpu *CPU) Cycle() {
+	opcode := cpu.getOpCode()
 	x := (opcode & 0x0F00) >> 8
 	y := (opcode & 0x00F0) >> 4
 	nn := byte(opcode & 0x00FF)
 	nnn := opcode & 0x0FFF
 	switch opcode & 0xF000 {
-	// 0NNN
-	//case 0x0000:
+	case 0x0000:
+		switch opcode & 0x00FF {
+		// 00E0: Clears the screen
+		case 0x00E0:
+			cpu.ClearDisplay()
+			cpu.Register.PC += 2
+		// 00EE: Returns from a subroutine
+		case 0x00EE:
+			cpu.Register.PC = cpu.Stack[cpu.Register.SP] + 2
+			cpu.Register.SP--
+		}
 	// 1NNN: goto NNN
 	case 0x1000:
 		cpu.Register.PC = nnn
@@ -139,7 +211,26 @@ func (cpu *CPU) Cycle(opcode uint16) {
 	//	     location I; I value doesn't change after the execution of this instruction. As described above, VF is set to 1 if any screen pixels are flipped from set to
 	//       unset when the sprite is drawn, and to 0 if that doesn’t happen
 	case 0xD000:
-		//TODO: Implement DXYN
+		cpu.Register.V[0xF] = 0x00
+		n := byte(opcode & 0x000F)
+		for i := cpu.Register.V[y]; i < cpu.Register.V[y]+n; i++ {
+			for j := cpu.Register.V[x]; j < cpu.Register.V[x]+8; j++ {
+				bit := (cpu.Memory.Memory[cpu.Register.I+uint16(i-cpu.Register.V[y])] >> (7 - j + cpu.Register.V[x])) & 0x01
+				xIndex, yIndex := j, i
+				if j >= DisplayWidth {
+					xIndex = j - DisplayWidth
+				}
+				if i >= DisplayHeight {
+					yIndex = i - DisplayHeight
+				}
+				if bit == 0x01 && cpu.Display[yIndex][xIndex] == 0x01 {
+					cpu.Register.V[0xF] = 0x01
+				}
+				cpu.Display[yIndex][xIndex] = cpu.Display[yIndex][xIndex] ^ bit
+			}
+		}
+		cpu.NeedDraw = true
+		cpu.Register.PC += 2
 	case 0xE000:
 		switch opcode & 0x00FF {
 		// EX9E: Skips the next instruction if the key stored in VX is pressed. (Usually the next instruction is a jump to skip a code block)
@@ -165,9 +256,11 @@ func (cpu *CPU) Cycle(opcode uint16) {
 			cpu.Register.PC += 2
 		// FX0A: A key press is awaited, and then stored in VX. (Blocking Operation. All instruction halted until next key event)
 		case 0x000A:
+			cpu.WaitInput = true
 			for i, k := range cpu.KeyState {
 				if k != 0 {
 					cpu.Register.V[x] = byte(i)
+					cpu.WaitInput = false
 					cpu.Register.PC += 2
 					break
 				}
@@ -213,6 +306,7 @@ func (cpu *CPU) Cycle(opcode uint16) {
 }
 
 func (cpu *CPU) Debug() {
+	fmt.Printf("OpCode: %X\n", cpu.getOpCode())
 	fmt.Printf("PC: %d\n", cpu.Register.PC)
 	fmt.Printf("SP: %d\n", cpu.Register.SP)
 	fmt.Printf("I: %d\n", cpu.Register.I)
