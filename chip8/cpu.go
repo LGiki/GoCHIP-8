@@ -2,6 +2,7 @@ package chip8
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 )
 
@@ -79,6 +80,12 @@ func (cpu *CPU) getOpCode() uint16 {
 }
 
 func (cpu *CPU) Cycle() {
+	defer func() {
+		if err := recover(); err != nil {
+			cpu.Debug()
+			log.Fatalf("%s\n", err)
+		}
+	}()
 	opcode := cpu.getOpCode()
 	x := (opcode & 0x0F00) >> 8
 	y := (opcode & 0x00F0) >> 4
@@ -211,22 +218,27 @@ func (cpu *CPU) Cycle() {
 	//	     location I; I value doesn't change after the execution of this instruction. As described above, VF is set to 1 if any screen pixels are flipped from set to
 	//       unset when the sprite is drawn, and to 0 if that doesn’t happen
 	case 0xD000:
+		xValue := cpu.Register.V[x]
+		yValue := cpu.Register.V[y]
+		height := byte(opcode & 0x000F)
 		cpu.Register.V[0xF] = 0x00
-		n := byte(opcode & 0x000F)
-		for i := cpu.Register.V[y]; i < cpu.Register.V[y]+n; i++ {
-			for j := cpu.Register.V[x]; j < cpu.Register.V[x]+8; j++ {
-				bit := (cpu.Memory.Memory[cpu.Register.I+uint16(i-cpu.Register.V[y])] >> (7 - j + cpu.Register.V[x])) & 0x01
+		for i := yValue; i < yValue+height; i++ {
+			for j := xValue; j < xValue+8; j++ {
+				bit := (cpu.Memory.Memory[cpu.Register.I+uint16(i-yValue)] >> (7 - j + cpu.Register.V[x])) & 0x01
 				xIndex, yIndex := j, i
-				if j >= DisplayWidth {
-					xIndex = j - DisplayWidth
+				if j >= DisplayWidth || i >= DisplayHeight {
+					continue
 				}
-				if i >= DisplayHeight {
-					yIndex = i - DisplayHeight
-				}
+				//if j >= DisplayWidth {
+				//	xIndex = j - DisplayWidth
+				//}
+				//if i >= DisplayHeight {
+				//	yIndex = i - DisplayHeight
+				//}
 				if bit == 0x01 && cpu.Display[yIndex][xIndex] == 0x01 {
 					cpu.Register.V[0xF] = 0x01
 				}
-				cpu.Display[yIndex][xIndex] = cpu.Display[yIndex][xIndex] ^ bit
+				cpu.Display[yIndex][xIndex] ^= bit
 			}
 		}
 		cpu.NeedDraw = true
