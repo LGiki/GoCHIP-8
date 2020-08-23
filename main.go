@@ -8,47 +8,42 @@ import (
 	"github.com/hajimehoshi/ebiten/audio"
 	"github.com/hajimehoshi/ebiten/audio/mp3"
 	"github.com/hajimehoshi/ebiten/ebitenutil"
+	"github.com/hajimehoshi/ebiten/inpututil"
 	"image/color"
 	"log"
+	"math/rand"
 	"os"
+	"time"
 )
 
 var (
 	cpu         chip8.CPU
 	audioPlayer *audio.Player
 	keyMap      map[ebiten.Key]byte
-	square      *ebiten.Image
+	view        *ebiten.Image
 	romPath     string
 	pixelColor  string
+	fullScreen  bool
 	showHelp    bool
 	mute        bool
+	counter     float64
+	clockSpeed  int
+	r, g, b     uint8 // Pixel color RGB
+	paused      bool
 )
 
 func init() {
-	flag.StringVar(&romPath, "r", "roms/PONG", "The `path` to ROM")
-	flag.StringVar(&pixelColor, "c", "white", "Pixel `color`: white, red, green, blue, yellow, pink, cyan")
-	flag.BoolVar(&mute, "m", false, "Mute")
+	rand.Seed(time.Now().UnixNano())
+	flag.StringVar(&romPath, "path", "roms/PONG", "The `path` to ROM")
+	flag.StringVar(&pixelColor, "color", "white", "Pixel `color`: white, red, green, blue, yellow, pink, cyan")
+	flag.IntVar(&clockSpeed, "clock", 400, "Cpu `clock speed` in hz")
+	flag.BoolVar(&mute, "mute", false, "Mute")
+	flag.BoolVar(&fullScreen, "full", false, "Full screen")
 	flag.BoolVar(&showHelp, "h", false, "Show help")
 	flag.Usage = usage
 	flag.Parse()
-}
-
-func createSquare() {
-	var err error
-	square, err = ebiten.NewImage(10, 10, ebiten.FilterNearest)
-	if err != nil {
-		log.Fatalln("Failed to create ebiten image")
-	}
-	r, g, b := parsePixelColor()
-	err = square.Fill(color.RGBA{
-		R: r,
-		G: g,
-		B: b,
-		A: 255,
-	})
-	if err != nil {
-		log.Fatalln("Failed to fill color for square")
-	}
+	view, _ = ebiten.NewImage(chip8.DisplayWidth*10, chip8.DisplayHeight*10, ebiten.FilterDefault)
+	r, g, b = parsePixelColor()
 }
 
 func parsePixelColor() (r, g, b uint8) {
@@ -118,75 +113,97 @@ func getPressedKeys() bool {
 	return false
 }
 
-func drawGraphics(screen *ebiten.Image) error {
-	for i := 0; i < chip8.DisplayHeight; i++ {
-		for j := 0; j < chip8.DisplayWidth; j++ {
-			if cpu.Display[i][j] == 0x01 {
-				opts := &ebiten.DrawImageOptions{}
-				opts.GeoM.Translate(float64(j*10), float64(i*10))
-				err := screen.DrawImage(square, opts)
-				if err != nil {
-					return err
+type Game struct{}
+
+func (game *Game) Layout(int, int) (screenWidth, screenHeight int) {
+	screenWidth, screenHeight = chip8.DisplayWidth*10, chip8.DisplayHeight*10
+	return
+}
+
+func (game *Game) Draw(screen *ebiten.Image) {
+	if cpu.NeedDraw {
+		_ = view.Fill(color.Black)
+		for i := 0; i < chip8.DisplayHeight; i++ {
+			for j := 0; j < chip8.DisplayWidth; j++ {
+				if cpu.Display[i][j] == 0x01 {
+					ebitenutil.DrawRect(view, float64(j*10), float64(i*10), 10, 10, color.RGBA{
+						R: r,
+						G: g,
+						B: b,
+						A: 255,
+					})
 				}
 			}
 		}
+		cpu.NeedDraw = false
 	}
+	opts := &ebiten.DrawImageOptions{}
+	_ = screen.DrawImage(view, opts)
+}
+
+func (game *Game) Update(*ebiten.Image) error {
+	if ebiten.IsKeyPressed(ebiten.KeyEscape) {
+		os.Exit(0)
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
+		paused = !paused
+	}
+
+	if paused && inpututil.IsKeyJustPressed(ebiten.KeyN) {
+		step()
+	}
+
+	if !paused {
+		for counter > 0 {
+			step()
+			counter -= float64(ebiten.MaxTPS())
+		}
+		counter += float64(clockSpeed)
+	}
+
+	if !mute && cpu.Register.ST > 0 {
+		if audioPlayer != nil {
+			err := audioPlayer.Play()
+			if err != nil {
+				return err
+			}
+			err = audioPlayer.Rewind()
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if ebiten.IsKeyPressed(ebiten.KeyI) {
+		cpu.Reset()
+		err := cpu.LoadROM(romPath)
+		if err != nil {
+			return err
+		}
+		paused = false
+	}
+
 	return nil
 }
 
-func update(screen *ebiten.Image) error {
-	ebiten.SetWindowTitle(fmt.Sprintf("GoCHIP-8 | %s (TPS: %f; FPS: %f)", romPath, ebiten.CurrentTPS(), ebiten.CurrentFPS()))
-	for i := 0; i < 10; i++ {
-		cpu.NeedDraw = false
-		cpu.WaitInput = false
-		isKeyPressed := true
-		cpu.Run()
-		//cpu.Debug()
-
-		if ebiten.IsKeyPressed(ebiten.KeyO) {
-			cpu.Reset()
-			err := cpu.LoadROM(romPath)
-			if err != nil {
-				return err
-			}
-		}
-
-		if cpu.WaitInput {
-			isKeyPressed = getPressedKeys()
-			if !isKeyPressed {
-				cpu.Register.PC -= 2
-			}
-		}
-
-		if cpu.NeedDraw || !isKeyPressed {
-			err := drawGraphics(screen)
-			if err != nil {
-				return err
-			}
-		}
-
-		for key, value := range keyMap {
-			if ebiten.IsKeyPressed(key) {
-				cpu.KeyState[value] = 0x01
-			} else {
-				cpu.KeyState[value] = 0x00
-			}
-		}
-
-		if !mute && cpu.Register.ST > 0 {
-			if audioPlayer != nil {
-				err := audioPlayer.Play()
-				if err != nil {
-					return err
-				}
-				err = audioPlayer.Rewind()
-				if err != nil {
-					return err
-				}
-			}
+func step() {
+	cpu.WaitInput = false
+	cpu.Run()
+	//cpu.Debug()
+	if cpu.WaitInput {
+		if !getPressedKeys() {
+			cpu.Register.PC -= 2
 		}
 	}
-	return nil
+
+	for key, value := range keyMap {
+		if ebiten.IsKeyPressed(key) {
+			cpu.KeyState[value] = 0x01
+		} else {
+			cpu.KeyState[value] = 0x00
+		}
+	}
 }
 
 func Run() {
@@ -197,7 +214,6 @@ func Run() {
 		log.Fatalln("Failed to load rom")
 	}
 	setupKeys()
-	createSquare()
 	if !mute {
 		audioContext, err := audio.NewContext(48000)
 		if err != nil {
@@ -219,14 +235,17 @@ func Run() {
 			}
 		}
 	}
-	if err := ebiten.Run(update, 640, 320, 1, "PONG"); err != nil {
+	ebiten.SetFullscreen(fullScreen)
+	ebiten.SetWindowSize(chip8.DisplayWidth*10, chip8.DisplayHeight*10)
+	ebiten.SetWindowTitle(fmt.Sprintf("GoCHIP-8 | %s", romPath))
+	if err := ebiten.RunGame(&Game{}); err != nil {
 		panic(err)
 	}
 }
 
 func usage() {
 	_, _ = fmt.Fprintf(os.Stderr, `GoCHIP-8
-Usage: ./GoCHIP-8 <-r pathToROM> [-m] [-c color]
+Usage: ./GoCHIP-8 <-path pathToROM> [-clock clock_speed] [-color color] [-mute] [-full]
 
 Options:
 `)
