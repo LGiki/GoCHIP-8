@@ -1,5 +1,7 @@
 # :video_game: GoCHIP-8
 
+[![License: GPL v3](https://img.shields.io/github/license/lgiki/GoCHIP-8?style=flat-square)](https://www.gnu.org/licenses/gpl-3.0)
+
 A [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) emulator written in [Go](https://golang.org/). 
 
 # Screenshot
