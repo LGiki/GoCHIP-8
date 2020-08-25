@@ -87,7 +87,7 @@ func (cpu *CPU) Cycle() {
 	defer func() {
 		if err := recover(); err != nil {
 			cpu.Debug()
-			log.Fatalf("%s\n", err)
+			log.Fatalf("CPU Panic: %s\n", err)
 		}
 	}()
 	opcode := cpu.getOpCode()
@@ -104,6 +104,8 @@ func (cpu *CPU) Cycle() {
 		// 00EE: Returns from a subroutine
 		case 0x00EE:
 			cpu.exec00EE()
+		default:
+			panic(fmt.Sprintf("Unknown opcode: %X", opcode))
 		}
 	// 1NNN: goto NNN
 	case 0x1000:
@@ -155,6 +157,8 @@ func (cpu *CPU) Cycle() {
 		// 8XYE: Stores the most significant bit of VX in VF and then shifts VX to the left by 1.
 		case 0x000E:
 			cpu.exec8XYE(x)
+		default:
+			panic(fmt.Sprintf("Unknown opcode: %X", opcode))
 		}
 	// 9XY0: Skips the next instruction if VX doesn't equal VY. (Usually the next instruction is a jump to skip a code block)
 	case 0x9000:
@@ -181,6 +185,8 @@ func (cpu *CPU) Cycle() {
 		// EXA1: Skips the next instruction if the key stored in VX isn't pressed. (Usually the next instruction is a jump to skip a code block)
 		case 0x00A1:
 			cpu.execEXA1(x)
+		default:
+			panic(fmt.Sprintf("Unknown opcode: %X", opcode))
 		}
 	case 0xF000:
 		switch opcode & 0x00FF {
@@ -213,11 +219,16 @@ func (cpu *CPU) Cycle() {
 		// FX65: Fills V0 to VX (including VX) with values from memory starting at address I. The offset from I is increased by 1 for each value written, but I itself is left unmodified
 		case 0x0065:
 			cpu.execFX65(x)
+		default:
+			panic(fmt.Sprintf("Unknown opcode: %X", opcode))
 		}
+	default:
+		panic(fmt.Sprintf("Unknown opcode: %X", opcode))
 	}
 }
 
 func (cpu *CPU) Debug() {
+	fmt.Println("===== CPU Debug =====")
 	fmt.Printf("OpCode: %X\n", cpu.getOpCode())
 	fmt.Printf("PC: %d\n", cpu.Register.PC)
 	fmt.Printf("SP: %d\n", cpu.Register.SP)
@@ -225,4 +236,5 @@ func (cpu *CPU) Debug() {
 	for i, value := range cpu.Register.V {
 		fmt.Printf("V%d: %d\n", i, value)
 	}
+	fmt.Println("=====================")
 }
