@@ -35,7 +35,7 @@ var (
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
-	flag.StringVar(&romPath, "path", "roms/PONG", "The `path` to ROM")
+	flag.StringVar(&romPath, "rom", "roms/PONG", "The `path` to ROM")
 	flag.StringVar(&pixelColor, "color", "white", "Pixel `color`: white, red, green, blue, yellow, pink, cyan")
 	flag.IntVar(&clockSpeed, "clock", 400, "Cpu `clock speed` in hz")
 	flag.BoolVar(&mute, "mute", false, "Mute")
