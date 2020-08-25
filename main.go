@@ -30,6 +30,7 @@ var (
 	clockSpeed  int
 	r, g, b     uint8 // Pixel color RGB
 	paused      bool
+	debug       bool
 )
 
 func init() {
@@ -38,6 +39,7 @@ func init() {
 	flag.StringVar(&pixelColor, "color", "white", "Pixel `color`: white, red, green, blue, yellow, pink, cyan")
 	flag.IntVar(&clockSpeed, "clock", 400, "Cpu `clock speed` in hz")
 	flag.BoolVar(&mute, "mute", false, "Mute")
+	flag.BoolVar(&debug, "debug", false, "Debug mode")
 	flag.BoolVar(&fullScreen, "full", false, "Full screen")
 	flag.BoolVar(&showHelp, "h", false, "Show help")
 	flag.Usage = usage
@@ -189,8 +191,10 @@ func (game *Game) Update(*ebiten.Image) error {
 
 func step() {
 	cpu.WaitInput = false
+	if debug {
+		cpu.Debug()
+	}
 	cpu.Run()
-	//cpu.Debug()
 	if cpu.WaitInput {
 		if !getPressedKeys() {
 			cpu.Register.PC -= 2
