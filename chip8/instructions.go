@@ -8,8 +8,8 @@ func (cpu *CPU) exec00E0() {
 }
 
 func (cpu *CPU) exec00EE() {
-	cpu.Register.PC = cpu.Stack[cpu.Register.SP] + 2
 	cpu.Register.SP--
+	cpu.Register.PC = cpu.Stack[cpu.Register.SP] + 2
 }
 
 func (cpu *CPU) exec1NNN(nnn uint16) {
@@ -17,8 +17,8 @@ func (cpu *CPU) exec1NNN(nnn uint16) {
 }
 
 func (cpu *CPU) exec2NNN(nnn uint16) {
-	cpu.Register.SP++
 	cpu.Stack[cpu.Register.SP] = cpu.Register.PC
+	cpu.Register.SP++
 	cpu.Register.PC = nnn
 }
 
@@ -140,7 +140,9 @@ func (cpu *CPU) execCXNN(x uint16, nn byte) {
 	cpu.Register.PC += 2
 }
 
-func (cpu *CPU) execDXYN(opcode, x, y uint16) {
+func (cpu *CPU) execDXYN(opcode uint16) {
+	x := (opcode & 0x0F00) >> 8
+	y := (opcode & 0x00F0) >> 4
 	xValue := cpu.Register.V[x]
 	yValue := cpu.Register.V[y]
 	height := byte(opcode & 0x000F)
@@ -149,8 +151,14 @@ func (cpu *CPU) execDXYN(opcode, x, y uint16) {
 		for j := xValue; j < xValue+8; j++ {
 			bit := (cpu.Memory.Memory[cpu.Register.I+uint16(i-yValue)] >> (7 - j + cpu.Register.V[x])) & 0x01
 			xIndex, yIndex := j, i
-			if j >= DisplayWidth || i >= DisplayHeight {
-				continue
+			//if j >= DisplayWidth || i >= DisplayHeight {
+			//	continue
+			//}
+			if j >= DisplayWidth {
+				xIndex = j % DisplayWidth
+			}
+			if i >= DisplayHeight {
+				yIndex = i % DisplayHeight
 			}
 			if bit == 0x01 && cpu.Display[yIndex][xIndex] == 0x01 {
 				cpu.Register.V[0xF] = 0x01
