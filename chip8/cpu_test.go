@@ -13,7 +13,6 @@ func TestNewCPU(t *testing.T) {
 func TestCPU_Reset(t *testing.T) {
 	cpu := NewCPU()
 	_ = cpu.LoadROM("roms/PONG")
-	cpu.Run()
 	cpu.Register.V[0xA] = 0x10
 	cpu.Register.PC = 0x1018
 	cpu.Stack[0x0] = 0x1018
