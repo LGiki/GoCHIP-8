@@ -39,6 +39,8 @@ func (cpu *CPU) Reset() {
 	cpu.Register.SP = 0
 	cpu.Register.DT = 0
 	cpu.Register.ST = 0
+	cpu.NeedDraw = false
+	cpu.WaitInput = false
 	for i := 0; i < len(cpu.Register.V); i++ {
 		cpu.Register.V[i] = 0
 	}
@@ -47,6 +49,9 @@ func (cpu *CPU) Reset() {
 	}
 	for i := 0; i < len(cpu.Stack); i++ {
 		cpu.Stack[i] = 0
+	}
+	for i := 0; i < len(cpu.KeyState); i++ {
+		cpu.KeyState[i] = 0
 	}
 	cpu.Memory.LoadFontSet()
 	cpu.ClearDisplay()
@@ -167,7 +172,7 @@ func (cpu *CPU) Cycle() {
 	//	     location I; I value doesn't change after the execution of this instruction. As described above, VF is set to 1 if any screen pixels are flipped from set to
 	//       unset when the sprite is drawn, and to 0 if that doesn’t happen
 	case 0xD000:
-		cpu.execDXYN(opcode, x, y)
+		cpu.execDXYN(opcode)
 	case 0xE000:
 		switch opcode & 0x00FF {
 		// EX9E: Skips the next instruction if the key stored in VX is pressed. (Usually the next instruction is a jump to skip a code block)
