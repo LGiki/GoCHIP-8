@@ -151,9 +151,6 @@ func (cpu *CPU) execDXYN(opcode uint16) {
 		for j := xValue; j < xValue+8; j++ {
 			bit := (cpu.Memory.Memory[cpu.Register.I+uint16(i-yValue)] >> (7 - j + cpu.Register.V[x])) & 0x01
 			xIndex, yIndex := j, i
-			//if j >= DisplayWidth || i >= DisplayHeight {
-			//	continue
-			//}
 			if j >= DisplayWidth {
 				xIndex = j % DisplayWidth
 			}
