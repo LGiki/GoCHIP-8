@@ -318,23 +318,60 @@ func TestExecDXYN(t *testing.T) {
 	cpu.Memory.Memory[0x300] = 0x10
 	cpu.Memory.Memory[0x301] = 0x18
 	cpu.execDXYN(0xD3D2)
-	assert.Equal(t, byte(0x00), cpu.Register.V[0xF])
-	assert.Equal(t, byte(0x00), cpu.Display[0][0])
-	assert.Equal(t, byte(0x00), cpu.Display[0][1])
-	assert.Equal(t, byte(0x00), cpu.Display[0][2])
-	assert.Equal(t, byte(0x01), cpu.Display[0][3])
-	assert.Equal(t, byte(0x00), cpu.Display[0][4])
-	assert.Equal(t, byte(0x00), cpu.Display[0][5])
-	assert.Equal(t, byte(0x00), cpu.Display[0][6])
-	assert.Equal(t, byte(0x00), cpu.Display[0][7])
-	assert.Equal(t, byte(0x00), cpu.Display[1][0])
-	assert.Equal(t, byte(0x00), cpu.Display[1][1])
-	assert.Equal(t, byte(0x00), cpu.Display[1][2])
-	assert.Equal(t, byte(0x01), cpu.Display[1][3])
-	assert.Equal(t, byte(0x01), cpu.Display[1][4])
-	assert.Equal(t, byte(0x00), cpu.Display[1][5])
-	assert.Equal(t, byte(0x00), cpu.Display[1][6])
-	assert.Equal(t, byte(0x00), cpu.Display[1][7])
+	newCPU := NewCPU()
+	newCPU.Register.I = 0x300
+	newCPU.Register.V[0x3] = 0
+	newCPU.Register.V[0xD] = 0
+	newCPU.Memory.Memory[0x300] = 0x10
+	newCPU.Memory.Memory[0x301] = 0x18
+	newCPU.Display[0][3] = 0x01
+	newCPU.Display[1][3] = 0x01
+	newCPU.Display[1][4] = 0x01
+	newCPU.NeedDraw = true
+	newCPU.Register.PC = 0x202
+	assert.Equal(t, newCPU, cpu)
+
+	cpu = NewCPU()
+	cpu.Register.I = 0x300
+	cpu.Memory.Memory[0x300] = 0x10
+	cpu.Memory.Memory[0x301] = 0x18
+	cpu.Register.V[0x3] = 63
+	cpu.Register.V[0xD] = 31
+	cpu.execDXYN(0xD3D2)
+	newCPU = NewCPU()
+	newCPU.Register.I = 0x300
+	newCPU.Register.V[0x3] = 63
+	newCPU.Register.V[0xD] = 31
+	newCPU.Memory.Memory[0x300] = 0x10
+	newCPU.Memory.Memory[0x301] = 0x18
+	newCPU.Display[31][2] = 0x01
+	newCPU.Display[0][2] = 0x01
+	newCPU.Display[0][3] = 0x01
+	newCPU.NeedDraw = true
+	newCPU.Register.PC = 0x202
+	assert.Equal(t, newCPU, cpu)
+
+	cpu = NewCPU()
+	cpu.Register.I = 0x300
+	cpu.Memory.Memory[0x300] = 0x10
+	cpu.Memory.Memory[0x301] = 0x18
+	cpu.Register.V[0x3] = 63
+	cpu.Register.V[0xD] = 31
+	cpu.Display[31][2] = 0x01
+	cpu.execDXYN(0xD3D2)
+	newCPU = NewCPU()
+	newCPU.Register.I = 0x300
+	newCPU.Register.V[0x3] = 63
+	newCPU.Register.V[0xD] = 31
+	newCPU.Memory.Memory[0x300] = 0x10
+	newCPU.Memory.Memory[0x301] = 0x18
+	newCPU.Display[31][2] = 0x00
+	newCPU.Display[0][2] = 0x01
+	newCPU.Display[0][3] = 0x01
+	newCPU.Register.V[0xF] = 0x01
+	newCPU.NeedDraw = true
+	newCPU.Register.PC = 0x202
+	assert.Equal(t, newCPU, cpu)
 }
 
 func TestExecEX9E(t *testing.T) {
