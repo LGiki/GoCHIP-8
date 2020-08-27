@@ -47,11 +47,11 @@ Default pixel color is white.
 
 If you pass `-full` parameter on command line, the program will run in full screen mode.
 
-## Mute
+## Mute Mode
 
 If you pass `-mute` parameter on command line, the program will run in mute mode.
 
-## Debug
+## Debug Mode
 
 If you pass `-debug` parameter on command line, the program will run in debug mode.
 
