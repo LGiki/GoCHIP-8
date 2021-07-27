@@ -8,6 +8,9 @@ jobs:
   goreleaser:
     runs-on: ubuntu-latest
     steps:
+      - 
+        name: Install ebiten dependencies
+        run: sudo apt install libc6-dev libglu1-mesa-dev libgl1-mesa-dev libxcursor-dev libxi-dev libxinerama-dev libxrandr-dev libxxf86vm-dev libasound2-dev pkg-config
       -
         name: Checkout
         uses: actions/checkout@v2
