@@ -1,12 +1,12 @@
 # :video_game: GoCHIP-8
 
-[![License: GPL v3](https://img.shields.io/github/license/lgiki/GoCHIP-8?style=flat-square)](https://www.gnu.org/licenses/gpl-3.0)
+[![License: GPL v3](https://img.shields.io/github/license/lgiki/GoCHIP-8?style=flat-square)](https://www.gnu.org/licenses/gpl-3.0) [![GitHub release (latest by date)](https://img.shields.io/github/v/release/LGiki/GoCHIP-8?style=flat-square)](https://github.com/LGiki/GoCHIP-8/releases)
 
 A [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) emulator written in [Go](https://golang.org/). 
 
 # Screenshot
 
-![Screenshot](images/screenshot.png)
+![Screenshot](https://github.com/LGiki/GoCHIP-8/raw/master/images/screenshot.png)
 
 # Build
 
